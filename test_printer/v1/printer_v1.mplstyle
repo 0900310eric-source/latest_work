@@ -1,0 +1,56 @@
+# =========================
+# paper.mplstyle
+# Times New Roman + 16:9
+# =========================
+
+# ---- Fonts ----
+font.family: serif
+font.serif: Times New Roman
+mathtext.fontset: stix
+
+# Embed fonts in vector outputs
+pdf.fonttype: 42
+ps.fonttype: 42
+
+# ---- Figure size: 16:9 ----
+# 12.8 x 7.2 inches = 16:9
+figure.figsize: 12.8, 7.2
+figure.dpi: 120
+savefig.dpi: 300
+savefig.bbox: tight
+savefig.pad_inches: 0.05
+
+# ---- Axes & labels ----
+axes.titlesize: 24
+axes.labelsize: 28
+axes.linewidth: 1.2
+axes.grid: False
+
+# ---- Ticks ----
+xtick.labelsize: 28
+ytick.labelsize: 28
+xtick.direction: in
+ytick.direction: in
+xtick.major.size: 6
+ytick.major.size: 6
+xtick.major.width: 1.0
+ytick.major.width: 1.0
+xtick.minor.size: 3
+ytick.minor.size: 3
+xtick.minor.width: 0.8
+ytick.minor.width: 0.8
+
+# ---- Legend ----
+legend.fontsize: 18
+legend.frameon: True
+legend.framealpha: 0.95
+legend.fancybox: True
+legend.borderpad: 0.4
+legend.handlelength: 2.0
+
+# ---- Lines ----
+lines.linewidth: 2.0
+lines.markersize: 6
+
+# ---- Layout ----
+figure.constrained_layout.use: True

@@ -1,0 +1,1095 @@
+{
+    "system_config": {
+        "version": "4.0"
+    },
+    "rag_library": [
+        {
+            "1": "math_linear_",
+            "function_id": "math_linear_1",
+            "status": "verified",
+            "keywords": [
+                "linear",
+                "scale",
+                "offset",
+                "gain",
+                "放大",
+                "線性變換"
+            ],
+            "description": [
+                "對輸入陣列進行線性變換 y = ax + b。",
+                "參數 y 可為純量(增益)或字典 {'gain': float, 'offset': float}。"
+            ],
+            "code": "def logic(x, y):\n    gain = y.get('gain', 1.0) if isinstance(y, dict) else (y if y is not None else 1.0)\n    offset = y.get('offset', 0.0) if isinstance(y, dict) else 0.0\n    return x * gain + offset",
+            "negatives": [
+                "指數運算",
+                "非線性回歸"
+            ]
+        },
+        {
+            "1": "math_calc_",
+            "function_id": "math_calc_1",
+            "status": "verified",
+            "keywords": [
+                "diff",
+                "gradient",
+                "derivative",
+                "微分",
+                "斜率"
+            ],
+            "description": [
+                "計算離散數列的中心差分 (Central Difference)。",
+                "參數 y 代表採樣間隔 dt (預設 1.0)。"
+            ],
+            "code": "def logic(x, y):\n    dt = y.get('dt', 1.0) if isinstance(y, dict) else (y if y is not None else 1.0)\n    res = np.zeros_like(x)\n    res[1:-1] = (x[2:] - x[:-2]) / (2 * dt)\n    return res",
+            "negatives": [
+                "積分",
+                "累積和"
+            ]
+        },
+        {
+            "1": "math_func_",
+            "function_id": "math_func_1",
+            "status": "verified",
+            "keywords": [
+                "sinc",
+                "normalized",
+                "辛克函數"
+            ],
+            "description": [
+                "計算正規化 Sinc 函數 (sin(pi*x)/(pi*x))。",
+                "參數 y 為縮放因子 scale。"
+            ],
+            "code": "def logic(x, y):\n    scale = y.get('scale', 1.0) if isinstance(y, dict) else (y if y is not None else 1.0)\n    return np.sinc(x * scale)",
+            "negatives": [
+                "三角函數",
+                "高斯函數"
+            ]
+        },
+        {
+            "2": "sig_filter_",
+            "function_id": "sig_filter_1",
+            "status": "verified",
+            "keywords": [
+                "lowpass",
+                "cutoff",
+                "filter",
+                "fft filter",
+                "低通",
+                "去噪"
+            ],
+            "description": [
+                "使用 FFT 進行理想低通濾波 (頻域硬截斷)。",
+                "參數 y 需包含 'fs'(採樣率) 與 'cutoff'(截止頻率)。"
+            ],
+            "code": "def logic(x, y):\n    fs = y.get('fs', 1000.0)\n    fc = y.get('cutoff', 100.0)\n    n = len(x)\n    # 1. 轉頻域\n    fft_coeffs = np.fft.rfft(x)\n    freqs = np.fft.rfftfreq(n, d=1/fs)\n    # 2. 應用遮罩 (頻域濾波)\n    mask = freqs <= fc\n    filtered_coeffs = fft_coeffs * mask\n    # 3. 轉回時域\n    return np.fft.irfft(filtered_coeffs, n=n)",
+            "negatives": [
+                "高通濾波器",
+                "時域卷積"
+            ]
+        },
+        {
+            "2": "sig_trans_",
+            "function_id": "sig_trans_1",
+            "status": "verified",
+            "keywords": [
+                "fft",
+                "spectrum",
+                "magnitude",
+                "頻譜"
+            ],
+            "description": [
+                "計算實數訊號的單邊 FFT 振幅頻譜。",
+                "參數 y 為採樣率 fs；回傳 (freqs, magnitude)。"
+            ],
+            "code": "def logic(x, y):\n    fs = y.get('fs', 1000.0) if isinstance(y, dict) else (y if y is not None else 1000.0)\n    n = len(x)\n    freqs = np.fft.rfftfreq(n, d=1/fs)\n    mag = np.abs(np.fft.rfft(x))\n    return freqs, mag",
+            "negatives": [
+                "逆傅立葉",
+                "相位譜"
+            ]
+        },
+        {
+            "2": "sig_mod_",
+            "function_id": "sig_mod_1",
+            "status": "verified",
+            "keywords": [
+                "am",
+                "modulation",
+                "carrier",
+                "調幅"
+            ],
+            "description": [
+                "執行標準振幅調變 (AM)。",
+                "參數 y 需包含 'fc'(載波頻率), 'fs'(採樣率), 'm'(調變指數)。"
+            ],
+            "code": "def logic(x, y):\n    fs = y.get('fs', 1000.0)\n    fc = y.get('fc', 100.0)\n    m = y.get('m', 0.5)\n    t = np.arange(len(x)) / fs\n    carrier = np.cos(2 * np.pi * fc * t)\n    return (1 + m * x) * carrier",
+            "negatives": [
+                "FM 調頻",
+                "解調"
+            ]
+        },
+        {
+            "2": "sig_env_",
+            "function_id": "sig_env_1",
+            "status": "verified",
+            "keywords": [
+                "envelope",
+                "analytic",
+                "hilbert",
+                "包絡線"
+            ],
+            "description": [
+                "使用 FFT 實作希爾伯特轉換以提取包絡線。",
+                "參數 y 無特定參數。"
+            ],
+            "code": "def logic(x, y):\n    N = len(x)\n    Xf = np.fft.fft(x)\n    h = np.zeros(N)\n    # 建構解析訊號的頻域遮罩: 正頻率x2, 負頻率x0\n    if N % 2 == 0:\n        h[0] = h[N // 2] = 1\n        h[1:N // 2] = 2\n    else:\n        h[0] = 1\n        h[1:(N + 1) // 2] = 2\n    analytic = np.fft.ifft(Xf * h)\n    return np.abs(analytic)",
+            "negatives": [
+                "RMS",
+                "移動平均"
+            ]
+        },
+        {
+            "3": "stat_basic_",
+            "function_id": "stat_basic_1",
+            "status": "verified",
+            "keywords": [
+                "SMA",
+                "simple moving average",
+                "smooth",
+                "rolling mean",
+                "filter",
+                "移動平均",
+                "平滑",
+                "低通濾波"
+            ],
+            "description": [
+                "Calculates the Simple Moving Average (SMA) keeping the output length same as input.",
+                "Uses 'same' convolution mode. Parameter y specifies the window size (int) or dict with 'window'.",
+                "計算簡單移動平均 (SMA)，並保持輸出長度與輸入一致 (Same Length)。",
+                "參數 y 為視窗大小 (int)。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    cfg = y if isinstance(y, dict) else {}\n    w = int(cfg.get('window', y if isinstance(y, (int, float)) else 5))\n    if w < 1 or x.size == 0: return x\n    # 使用 mode='same' 確保長度不變，這是訊號處理流程對齊的關鍵\n    return np.convolve(x, np.ones(w)/w, mode='same')",
+            "negatives": [
+                "exponential moving average",
+                "weighted average",
+                "cumulative sum"
+            ]
+        },
+        {
+            "3": "stat_dist_",
+            "function_id": "stat_dist_1",
+            "status": "verified",
+            "keywords": [
+                "gaussian",
+                "normal",
+                "pdf",
+                "常態分佈"
+            ],
+            "description": [
+                "計算高斯機率密度函數 (Gaussian PDF)。",
+                "參數 y 可指定 {'mean': mu, 'std': sigma}。"
+            ],
+            "code": "def logic(x, y):\n    if isinstance(y, dict) and 'mean' in y:\n        mu, sigma = y['mean'], y['std']\n    else:\n        mu, sigma = np.mean(x), np.std(x)\n    return (1 / (sigma * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mu) / sigma) ** 2)",
+            "negatives": [
+                "均勻分佈"
+            ]
+        },
+        {
+            "3": "stat_reg_",
+            "function_id": "stat_reg_1",
+            "status": "verified",
+            "keywords": [
+                "regression",
+                "polyfit",
+                "polynomial",
+                "多項式擬合"
+            ],
+            "description": [
+                "對數據進行多項式回歸擬合。",
+                "參數 y 為多項式階數 deg (int)。"
+            ],
+            "code": "def logic(x, y):\n    deg = int(y.get('deg', 1)) if isinstance(y, dict) else int(y if y is not None else 1)\n    x_axis = np.arange(len(x))\n    coeffs = np.polyfit(x_axis, x, deg)\n    return np.polyval(coeffs, x_axis)",
+            "negatives": [
+                "插值"
+            ]
+        },
+        {
+            "3": "stat_outlier_",
+            "function_id": "stat_outlier_1",
+            "status": "verified",
+            "keywords": [
+                "outlier",
+                "z-score",
+                "異常值"
+            ],
+            "description": [
+                "基於 Z-Score 檢測異常值。",
+                "參數 y 為閾值 threshold (預設 3.0)。"
+            ],
+            "code": "def logic(x, y):\n    thresh = y.get('threshold', 3.0) if isinstance(y, dict) else (y if y is not None else 3.0)\n    z_scores = np.abs((x - np.mean(x)) / np.std(x))\n    return z_scores > thresh",
+            "negatives": [
+                "中位數"
+            ]
+        },
+        {
+            "4": "arr_shape_",
+            "function_id": "arr_shape_1",
+            "status": "verified",
+            "keywords": [
+                "flatten",
+                "reshape",
+                "展平"
+            ],
+            "description": [
+                "將多維陣列展平為一維陣列。",
+                "參數 y 無作用。"
+            ],
+            "code": "def logic(x, y):\n    return x.flatten()",
+            "negatives": [
+                "轉置"
+            ]
+        },
+        {
+            "4": "arr_mask_",
+            "function_id": "arr_mask_1",
+            "status": "verified",
+            "keywords": [
+                "clip",
+                "limit",
+                "截斷"
+            ],
+            "description": [
+                "限制數值範圍 (Hard Clipping)。",
+                "參數 y 需為字典 {'min': val, 'max': val}。"
+            ],
+            "code": "def logic(x, y):\n    vmin = y.get('min', None) if isinstance(y, dict) else None\n    vmax = y.get('max', None) if isinstance(y, dict) else y\n    return np.clip(x, vmin, vmax)",
+            "negatives": [
+                "正規化"
+            ]
+        },
+        {
+            "4": "arr_pad_",
+            "function_id": "arr_pad_1",
+            "status": "verified",
+            "keywords": [
+                "pad",
+                "zero padding",
+                "補零"
+            ],
+            "description": [
+                "在陣列末端補零以達到指定長度。",
+                "參數 y 為目標總長度 target_len。"
+            ],
+            "code": "def logic(x, y):\n    target_len = int(y.get('length', len(x))) if isinstance(y, dict) else int(y if y is not None else len(x))\n    pad_len = max(0, target_len - len(x))\n    return np.pad(x, (0, pad_len), 'constant')",
+            "negatives": [
+                "插值"
+            ]
+        },
+        {
+            "5": "gen_wave_",
+            "function_id": "gen_wave_1",
+            "status": "verified",
+            "keywords": [
+                "chirp",
+                "sweep",
+                "掃頻"
+            ],
+            "description": [
+                "使用數學公式生成線性掃頻訊號 (Linear Chirp)。",
+                "參數 x 為時間軸 t；y 需含 'f0', 'f1', 't1'。"
+            ],
+            "code": "def logic(x, y):\n    f0 = y.get('f0', 0.0)\n    f1 = y.get('f1', 100.0)\n    t1 = y.get('t1', x[-1])\n    # 數學公式: sin(2*pi * (f0*t + 0.5*k*t^2)) where k = (f1-f0)/t1\n    k = (f1 - f0) / t1\n    phase = 2 * np.pi * (f0 * x + 0.5 * k * x**2)\n    return np.sin(phase)",
+            "negatives": [
+                "正弦波",
+                "方波"
+            ]
+        },
+        {
+            "5": "gen_noise_",
+            "function_id": "gen_noise_1",
+            "status": "verified",
+            "keywords": [
+                "noise",
+                "awgn",
+                "白雜訊"
+            ],
+            "description": [
+                "生成加性高斯白雜訊 (AWGN)。",
+                "參數 y 為雜訊標準差 std。"
+            ],
+            "code": "def logic(x, y):\n    std = y.get('std', 0.1) if isinstance(y, dict) else (y if y is not None else 0.1)\n    return x + np.random.normal(0, std, size=x.shape)",
+            "negatives": [
+                "椒鹽雜訊"
+            ]
+        },
+        {
+            "5": "gen_noise_",
+            "function_id": "gen_noise_2",
+            "status": "verified",
+            "keywords": [
+                "gaussian distribution",
+                "normal distribution",
+                "random noise",
+                "noise generation"
+            ],
+            "description": [
+                "Generates random numbers following a Gaussian (normal) distribution.",
+                "Parameter x determines the shape. Parameter y is a dict with optional 'mean' (default 0) and 'std_dev' (default 1)."
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    cfg = y if isinstance(y, dict) else {}\n    return np.random.normal(cfg.get('mean', 0), cfg.get('std_dev', 1), x.shape)",
+            "negatives": []
+        },
+        {
+            "1": "math_linear_",
+            "function_id": "math_linear_2",
+            "status": "verified",
+            "keywords": [
+                "Min-Max normalization",
+                "data scaling",
+                "feature engineering",
+                "0-1 scaling"
+            ],
+            "description": [
+                "Performs Min-Max normalization on an input array, scaling its values between 0 and 1.",
+                "Parameter x is the input array to be normalized. Parameter y has no effect."
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    min_val = x.min()\n    max_val = x.max()\n    if max_val == min_val:\n        return np.zeros_like(x, dtype=float)\n    return (x - min_val) / (max_val - min_val)",
+            "negatives": []
+        },
+        {
+            "1": "math_calc_",
+            "function_id": "math_calc_2",
+            "status": "verified",
+            "keywords": [
+                "cumulative sum",
+                "integration",
+                "trapezoidal",
+                "dt"
+            ],
+            "description": [
+                "Calculates the cumulative sum of an array x, multiplied by the sampling time dt (Integration approximation).",
+                "Parameter x is the array. Parameter y represents 'dt' (default 1.0), can be float or dict."
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    dt = y.get('dt', 1.0) if isinstance(y, dict) else (y if y is not None else 1.0)\n    return np.cumsum(x) * dt",
+            "negatives": []
+        },
+        {
+            "1": "math_calc_",
+            "function_id": "math_calc_3",
+            "status": "verified",
+            "keywords": [
+                "cosine similarity",
+                "vector distance",
+                "夾角餘弦值",
+                "向量計算"
+            ],
+            "description": [
+                "計算輸入向量 x 與參數 y (目標向量) 之間的夾角餘弦值。",
+                "參數 y 可以直接是向量(array)或是包含 'vector' 的字典。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    v2 = np.array(y.get('vector', y)) if isinstance(y, dict) else np.array(y)\n    nx, ny = np.linalg.norm(x), np.linalg.norm(v2)\n    if nx == 0 or ny == 0 or x.shape != v2.shape:\n        return 0.0\n    return np.dot(x, v2) / (nx * ny)",
+            "negatives": []
+        },
+        {
+            "2": "sig_env_",
+            "function_id": "sig_env_2",
+            "status": "verified",
+            "keywords": [
+                "RMS",
+                "Root Mean Square",
+                "energy",
+                "均方根值"
+            ],
+            "description": [
+                "Calculates the RMS (Root Mean Square) of an array x.",
+                "Parameter y is not used."
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    return np.sqrt(np.mean(x**2))",
+            "negatives": []
+        },
+        {
+            "2": "sig_env_",
+            "function_id": "sig_env_3",
+            "status": "verified",
+            "keywords": [
+                "zero crossing rate",
+                "zcr",
+                "frequency estimation",
+                "signbit",
+                "過零率"
+            ],
+            "description": [
+                "Calculates the number of times a signal crosses the zero-axis.",
+                "Uses efficient bitwise sign check. Parameter y is ignored."
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    return len(np.where(np.diff(np.signbit(x)))[0])",
+            "negatives": [
+                "threshold"
+            ]
+        },
+        {
+            "3": "stat_outlier_",
+            "function_id": "stat_outlier_2",
+            "status": "verified",
+            "keywords": [
+                "signal processing",
+                "peak detection",
+                "local maxima",
+                "threshold",
+                "find_peaks"
+            ],
+            "description": [
+                "Finds the positions of peaks in a signal that are greater than a certain threshold.",
+                "Parameter x is the input signal array, and parameter y contains the threshold value 'height'."
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    h = y.get('height', -np.inf) if isinstance(y, dict) else (y if y is not None else -np.inf)\n    p = np.pad(x, (1, 1), constant_values=x.min()-1)\n    return np.where((x > h) & (x > p[:-2]) & (x > p[2:]))[0]",
+            "negatives": []
+        },
+        {
+            "3": "stat_basic_",
+            "function_id": "stat_basic_2",
+            "status": "verified",
+            "keywords": [
+                "EMA",
+                "exponential moving average",
+                "low pass filter",
+                "指數移動平均",
+                "平滑係數",
+                "alpha",
+                "時間序列分析",
+                "數據處理"
+            ],
+            "description": [
+                "計算給定數組的指數移動平均（EMA）濾波。",
+                "參數 y 是平滑係數 alpha，取值範圍為0到1之間。",
+                "Calculates the Exponential Moving Average (EMA) of an array.",
+                "Parameter x is the input array. Parameter y specifies the smoothing factor 'alpha' (0 to 1). Lower alpha means more smoothing."
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    a = y.get('alpha', 0.1) if isinstance(y, dict) else (y if y is not None else 0.1)\n    if x.size == 0: return np.array([], dtype=float)\n    res = np.empty_like(x, dtype=float)\n    res[0] = x[0]\n    for i in range(1, len(x)): res[i] = a * x[i] + (1 - a) * res[i-1]\n    return res",
+            "negatives": [
+                "simple moving average",
+                "rolling mean"
+            ]
+        },
+        {
+            "1": "math_calc_",
+            "function_id": "math_calc_4",
+            "status": "verified",
+            "keywords": [
+                "difference",
+                "derivative",
+                "gradient",
+                "rate of change",
+                "delta",
+                "差分",
+                "一階導數",
+                "變化率"
+            ],
+            "description": [
+                "Calculates the discrete first-order difference (current - previous).",
+                "Pads with a leading zero to maintain the same length as the input array x.",
+                "計算訊號的一階差分，即當前值減去前一個值。會在開頭補 0 以保持陣列長度不變。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    return np.concatenate(([0.], np.diff(x)))",
+            "negatives": [
+                "set difference",
+                "subtract"
+            ]
+        },
+        {
+            "5": "gen_wave_",
+            "function_id": "gen_wave_2",
+            "status": "verified",
+            "keywords": [
+                "square wave",
+                "pulse wave",
+                "oscillator",
+                "signal generation",
+                "方波",
+                "頻率",
+                "採樣率",
+                "訊號生成"
+            ],
+            "description": [
+                "Generates a square wave signal (values 1.0 and -1.0).",
+                "Parameter x represents the sample indices. Parameter y is a dict containing 'freq' (frequency) and 'fs' (sampling rate).",
+                "生成方波訊號 (值為 1.0 或 -1.0)。",
+                "參數 y 包含 'freq'（頻率）和 'fs'（採樣率）。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    c = y if isinstance(y, dict) else {}\n    f, fs = c.get('freq', 1.0), c.get('fs', 1000.0)\n    return np.where(np.sin(2 * np.pi * f * (x / fs)) >= 0, 1.0, -1.0)",
+            "negatives": [
+                "sine wave",
+                "cosine wave"
+            ]
+        },
+        {
+            "4": "arr_shape_",
+            "function_id": "arr_shape_2",
+            "status": "verified",
+            "keywords": [
+                "sliding window",
+                "rolling window",
+                "stride",
+                "segmentation",
+                "feature extraction",
+                "滑動視窗",
+                "滾動視窗",
+                "切分",
+                "步長"
+            ],
+            "description": [
+                "Converts a 1D array into a 2D matrix with overlapping sliding windows.",
+                "Parameter y specifies the window length (int) or a dict with 'window_length' and 'stride'.",
+                "將一維陣列切分成重疊的滑動視窗 (Sliding Window) 二維矩陣。",
+                "參數 y 可直接傳入視窗長度，或傳入包含 'window_length' 與 'stride' 的字典。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    cfg = y if isinstance(y, dict) else {}\n    w = int(cfg.get('window_length', y if isinstance(y, (int, float)) else 3))\n    s = int(cfg.get('stride', 1))\n    if x.size < w or w < 1: return np.array([])\n    return np.lib.stride_tricks.sliding_window_view(x, w)[::s]",
+            "negatives": [
+                "reshape",
+                "split",
+                "resize"
+            ]
+        },
+        {
+            "4": "arr_shape_",
+            "function_id": "arr_shape_3",
+            "status": "verified",
+            "keywords": [
+                "resample",
+                "interp",
+                "resize",
+                "length",
+                "scaling",
+                "重採樣",
+                "插值",
+                "改變長度"
+            ],
+            "description": [
+                "Resamples the input array to a specific target length using linear interpolation.",
+                "Expands the capability of arr_shape to allow resizing. Parameter y specifies the target length (int).",
+                "使用線性插值將陣列重採樣至指定長度。",
+                "擴充 arr_shape 功能以支援長度改變。參數 y 為目標長度 (int)。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    target_len = int(y.get('length', len(x))) if isinstance(y, dict) else int(y if y is not None else len(x))\n    if target_len <= 0: return np.array([])\n    if x.size < 2: return np.resize(x, target_len)\n    # 建立舊座標與新座標進行插值\n    old_indices = np.linspace(0, len(x)-1, len(x))\n    new_indices = np.linspace(0, len(x)-1, target_len)\n    return np.interp(new_indices, old_indices, x)",
+            "negatives": [
+                "reshape",
+                "flatten"
+            ]
+        },
+        {
+            "1": "math_func_",
+            "function_id": "math_func_2",
+            "status": "verified",
+            "keywords": [
+                "window function",
+                "hanning",
+                "hamming",
+                "blackman",
+                "preprocessing",
+                "窗函數",
+                "權重函數"
+            ],
+            "description": [
+                "Applies a mathematical window function (Hanning/Hamming/Blackman) to the array.",
+                "Commonly used before FFT. Parameter y specifies the window type (str).",
+                "對陣列套用數學窗函數 (Hanning/Hamming 等)。",
+                "通常用於 FFT 前處理。參數 y 指定窗函數類型。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    w_type = y.get('type', 'hanning') if isinstance(y, dict) else (str(y) if y is not None else 'hanning')\n    N = x.size\n    if N == 0: return x\n    if 'hamming' in w_type.lower():\n        window = np.hamming(N)\n    elif 'blackman' in w_type.lower():\n        window = np.blackman(N)\n    else:\n        window = np.hanning(N)\n    return x * window",
+            "negatives": [
+                "sinc",
+                "step function"
+            ]
+        },
+        {
+            "4": "arr_mask_",
+            "function_id": "arr_mask_2",
+            "status": "verified",
+            "keywords": [
+                "schmitt trigger",
+                "hysteresis",
+                "threshold mask",
+                "binary mask",
+                "debounce",
+                "施密特觸發器",
+                "雙閾值",
+                "遮罩"
+            ],
+            "description": [
+                "Applies a Schmitt Trigger (Hysteresis) mask to convert values to 0.0 or 1.0.",
+                "A more advanced version of clipping/masking with memory. Parameter y contains 'high' and 'low'.",
+                "套用施密特觸發器遮罩，將數值轉換為 0.0 或 1.0。",
+                "這是一種帶有記憶效應的高級閾值遮罩。參數 y 需包含 'high' 與 'low'。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    cfg = y if isinstance(y, dict) else {}\n    high = cfg.get('high', 0.5)\n    low = cfg.get('low', -0.5)\n    out = np.zeros_like(x, dtype=float)\n    state = 0.0\n    # 使用迴圈處理狀態記憶 (Hysteresis)\n    for i in range(len(x)):\n        if x[i] >= high:\n            state = 1.0\n        elif x[i] <= low:\n            state = 0.0\n        out[i] = state\n    return out",
+            "negatives": [
+                "clip",
+                "minmax"
+            ]
+        },
+        {
+            "2": "sig_mod_",
+            "function_id": "sig_mod_2",
+            "status": "verified",
+            "keywords": [
+                "PWM",
+                "pulse width modulation",
+                "duty cycle",
+                "square wave",
+                "control",
+                "脈寬調變",
+                "占空比",
+                "方波"
+            ],
+            "description": [
+                "Generates a square wave with duty cycle controlled by input array x.",
+                "Parameter y specifies the frequency or number of samples per period."
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    # y 定義載波週期 (Period in samples)\n    period = int(y.get('period', 10)) if isinstance(y, dict) else int(y if y is not None else 10)\n    if period < 1: period = 1\n    \n    # 1. 產生鋸齒波載波 (Sawtooth Carrier): 0.0 -> 1.0 循環\n    indices = np.arange(len(x))\n    carrier = (indices % period) / period\n    \n    # 2. PWM 比較邏輯: 訊號 > 載波 則為 High\n    return np.where(x > carrier, 1.0, 0.0)",
+            "negatives": ["amplitude modulation", "frequency modulation"]
+        },
+        {
+            "1": "math_calc_",
+            "function_id": "math_calc_5",
+            "status": "verified",
+            "keywords": [
+                "euclidean distance",
+                "L2 norm",
+                "similarity",
+                "error metric",
+                "difference",
+                "歐幾里得距離",
+                "相似度",
+                "誤差"
+            ],
+            "description": [
+                "Calculates the Euclidean Distance between two arrays x and y.",
+                "Automatically slices inputs to the minimum length of the two. Returns a single-value array.",
+                "計算 x 與 y 之間的歐幾里得距離 (L2 Norm)。",
+                "自動將兩者裁切至相同長度後計算。回傳單一數值陣列。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    # 1. 確保 y 是陣列 (相容 list)\n    y_arr = np.array(y) if not isinstance(y, np.ndarray) else y\n    \n    # 2. 邊界檢查\n    if x.size == 0 or y_arr.size == 0:\n        return np.array([0.0])\n        \n    # 3. 核心邏輯: 取最小長度並裁切 (Safe Slicing)\n    min_len = min(len(x), len(y_arr))\n    x_core = x[:min_len]\n    y_core = y_arr[:min_len]\n    \n    # 4. 計算距離 sqrt(sum((x-y)^2))\n    dist = np.sqrt(np.sum((x_core - y_core) ** 2))\n    return np.array([dist])",
+            "negatives": [
+                "manhattan distance",
+                "cosine similarity"
+            ]
+        },
+        {
+            "2": "sig_trans_",
+            "function_id": "sig_trans_2",
+            "status": "verified",
+            "keywords": [
+                "cross correlation",
+                "xcorr",
+                "lag",
+                "time delay",
+                "similarity",
+                "互相關",
+                "滯後",
+                "相似度"
+            ],
+            "description": [
+                "Calculates the Cross Correlation between two signals x and y.",
+                "Uses mode='same' to return an output of the same length as x. Useful for finding time lags.",
+                "計算 x 與 y 之間的互相關 (Cross Correlation)。",
+                "使用 mode='same' 保持輸出長度與 x 一致。常用於尋找訊號滯後或圖形匹配。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    # 1. 檢查 y 是否為有效陣列\n    if not isinstance(y, (np.ndarray, list)):\n        return x\n    \n    y_arr = np.array(y)\n    if y_arr.size == 0:\n        return x\n        \n    # 2. 執行互相關 (Cross Correlation)\n    # mode='same' 會回傳與 x 等長的結果，中心點代表零滯後\n    return np.correlate(x, y_arr, mode='same')",
+            "negatives": [
+                "auto correlation",
+                "convolution"
+            ]
+        },
+        {
+            "3": "stat_basic_",
+            "function_id": "stat_basic_3",
+            "status": "verified",
+            "keywords": [
+                "pearson correlation",
+                "correlation coefficient",
+                "linear relationship",
+                "r value",
+                "statistics",
+                "皮爾森相關係數",
+                "線性關係",
+                "統計"
+            ],
+            "description": [
+                "Calculates the Pearson Correlation Coefficient (r) between two arrays x and y.",
+                "Returns a value between -1 and 1 indicating linear correlation strength.",
+                "計算 x 與 y 之間的皮爾森相關係數 (r)。",
+                "數值範圍 -1 到 1，表示線性相關強度。若 y 非陣列則回傳 0。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    # 1. 確保 y 是陣列\n    if not isinstance(y, (np.ndarray, list)):\n        return np.array([0.0])\n    y_arr = np.array(y)\n    \n    # 2. 邊界檢查\n    if x.size < 2 or y_arr.size < 2:\n        return np.array([0.0])\n        \n    # 3. 對齊長度 (Trim to min length)\n    min_len = min(len(x), len(y_arr))\n    x_core = x[:min_len]\n    y_core = y_arr[:min_len]\n    \n    # 4. 計算相關係數矩陣 [ [1, r], [r, 1] ]\n    # 取出 [0, 1] 位置的值\n    r = np.corrcoef(x_core, y_core)[0, 1]\n    \n    # 處理 NaN 情況 (例如標準差為 0)\n    if np.isnan(r): r = 0.0\n    return np.array([r])",
+            "negatives": [
+                "spearman correlation",
+                "covariance"
+            ]
+        },
+        {
+            "1": "math_calc_",
+            "function_id": "math_calc_6",
+            "status": "verified",
+            "keywords": [
+                "mse",
+                "mean squared error",
+                "loss function",
+                "accuracy",
+                "均方誤差",
+                "損失函數"
+            ],
+            "description": [
+                "Calculates the Mean Squared Error between two arrays x (prediction) and y (target).",
+                "Input y must be an array. Automatically handles length mismatch by trimming.",
+                "計算 x (預測值) 與 y (目標值) 之間的均方誤差。",
+                "y 必須為陣列。自動裁切至相同長度後計算。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    # 1. 強制轉型與防呆\n    y_arr = np.array(y) if not isinstance(y, np.ndarray) else y\n    if x.size == 0 or y_arr.size == 0: return np.array([0.0])\n    \n    # 2. 對齊長度\n    n = min(len(x), len(y_arr))\n    \n    # 3. 計算 MSE\n    return np.array([np.mean((x[:n] - y_arr[:n]) ** 2)])",
+            "negatives": ["mae", "root mean square"]
+        },
+        {
+            "2": "sig_trans_",
+            "function_id": "sig_trans_3",
+            "status": "verified",
+            "keywords": [
+                "convolution",
+                "filter response",
+                "linear system",
+                "卷積",
+                "濾波"
+            ],
+            "description": [
+                "Performs linear convolution between signal x and kernel k (parameter y).",
+                "Parameter y can be the kernel array itself or a dict {'kernel': arr, 'mode': 'same'/'full'/'valid'}.",
+                "執行訊號 x 與卷積核 k 的線性卷積。",
+                "參數 y 可為卷積核陣列，或包含 'kernel' 與 'mode' 的字典。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    # 1. 解析參數\n    cfg = y if isinstance(y, dict) else {'kernel': y}\n    k = np.array(cfg.get('kernel', y if not isinstance(y, dict) else [1.0]))\n    mode = cfg.get('mode', 'same')\n    \n    # 2. 防呆\n    if x.size == 0 or k.size == 0: return np.array([])\n    \n    # 3. 執行卷積\n    return np.convolve(x, k, mode=mode)",
+            "negatives": [
+                "correlation",
+                "multiplication"
+            ]
+        },
+        {
+            "4": "arr_shape_",
+            "function_id": "arr_shape_4",
+            "status": "verified",
+            "keywords": [
+                "vstack",
+                "combine",
+                "merge",
+                "append",
+                "堆疊",
+                "合併"
+            ],
+            "description": [
+                "Vertically stacks array x and array y to create a 2D matrix.",
+                "Requires x and y to have the same length (or slices to min length).",
+                "將陣列 x 與 y 垂直堆疊成 2D 矩陣。",
+                "兩者長度需一致，程式會自動裁切至較短長度。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    y_arr = np.array(y) if not isinstance(y, np.ndarray) else y\n    if y_arr.size == 0: return x\n    \n    # 對齊長度\n    n = min(len(x), len(y_arr))\n    # 堆疊: row0=x, row1=y\n    return np.vstack((x[:n], y_arr[:n]))",
+            "negatives": ["hstack", "concatenate"]
+        },
+        {
+            "2": "sig_trans_",
+            "function_id": "sig_trans_4",
+            "status": "verified",
+            "keywords": [
+                "fft",
+                "spectrum",
+                "zero padding",
+                "frequency domain",
+                "快速傅立葉變換",
+                "補零",
+                "頻譜"
+            ],
+            "description": [
+                "Calculates the Magnitude Spectrum using FFT with optional zero-padding.",
+                "Parameter y specifies the FFT length 'n' (int). If n > len(x), the signal is zero-padded for higher spectral resolution.",
+                "計算 FFT 振幅頻譜，支援補零 (Zero-Padding)。",
+                "參數 y 指定 FFT 點數 (int)。若 y 大於訊號長度，會自動補零以增加頻譜解析度。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    # 1. 解析參數 y (支援 int 直接輸入)\n    n = int(y.get('n', len(x))) if isinstance(y, dict) else int(y if y is not None else len(x))\n    \n    # 2. 計算實數 FFT (rfft)\n    # n 指定後，numpy 會自動執行截斷或補零\n    fft_complex = np.fft.rfft(x, n=n)\n    \n    # 3. 回傳振幅 (Magnitude)\n    return np.abs(fft_complex)",
+            "negatives": [
+                "ifft",
+                "stft"
+            ]
+        },
+        {
+            "2": "sig_trans_",
+            "function_id": "sig_trans_5",
+            "status": "verified",
+            "keywords": [
+                "fft2",
+                "2d spectrum",
+                "image frequency",
+                "spatial frequency",
+                "二維傅立葉",
+                "影像頻譜"
+            ],
+            "description": [
+                "Computes the 2D FFT magnitude spectrum of a matrix/image.",
+                "Applies FFT shift (centering low freq) and Log scaling for better visibility.",
+                "Input x must be a 2D array. Parameter y is ignored.",
+                "計算二維陣列的 FFT 振幅頻譜。",
+                "自動應用頻譜位移 (Shift) 與對數縮放 (Log scale) 以利觀察特徵。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    # 1. 確保輸入為二維\n    if x.ndim != 2:\n        return x\n        \n    # 2. 執行 2D FFT\n    f = np.fft.fft2(x)\n    \n    # 3. 移頻 (將 DC 分量移至中心)\n    f_shift = np.fft.fftshift(f)\n    \n    # 4. 取對數振幅 (Log Magnitude) 避免動態範圍過大\n    # 加 1 是為了避免 log(0)\n    return np.log(1 + np.abs(f_shift))",
+            "negatives": [
+                "fft",
+                "conv2d"
+            ]
+        },
+        {
+            "2": "sig_trans_",
+            "function_id": "sig_trans_6",
+            "status": "verified",
+            "keywords": [
+                "ifft",
+                "inverse fft",
+                "reconstruct",
+                "complex",
+                "逆傅立葉",
+                "訊號合成"
+            ],
+            "description": [
+                "Reconstructs a time-domain signal from Real (x) and Imaginary (y) frequency components using Inverse FFT.",
+                "Both inputs must be arrays of the same length.",
+                "使用逆傅立葉 (IFFT) 將實部 (x) 與虛部 (y) 合成為時域訊號。",
+                "x 與 y 必須為等長陣列。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    # 1. 確保 y 是陣列\n    y_arr = np.array(y) if not isinstance(y, np.ndarray) else y\n    n = min(len(x), len(y_arr))\n    if n == 0: return np.array([])\n    \n    # 2. 組合複數頻譜 (Real + j*Imag)\n    spectrum = x[:n] + 1j * y_arr[:n]\n    \n    # 3. 執行逆變換 (取實部回傳)\n    return np.fft.irfft(spectrum)",
+            "negatives": [
+                "fft",
+                "magnitude"
+            ]
+        },
+        {
+        "2": "sig_filter_",
+        "function_id": "sig_filter_2",
+        "status": "verified",
+        "keywords": [
+            "low pass",
+            "filter",
+            "cutoff",
+            "smooth",
+            "denoise",
+            "低通",
+            "濾波",
+            "去噪",
+            "平滑"
+        ],
+        "description": [
+            "Filters out signals above a specific cutoff frequency.",
+            "Useful for removing high-frequency noise.",
+            "濾除高於截止頻率的訊號，保留低頻成分。",
+            "參數 y 可為截止頻率數值 (float)，或包含 {'fs', 'cutoff', 'order'} 的字典。"
+        ],
+        "code": "import numpy as np\nimport scipy.signal as signal\n\ndef logic(x, y):\n    # 1. 參數解析與防呆\n    fs = 1000.0\n    cutoff = 50.0\n    order = 4\n    \n    if isinstance(y, dict):\n        fs = y.get('fs', fs)\n        cutoff = y.get('cutoff', cutoff)\n        order = y.get('order', order)\n    elif isinstance(y, (int, float)):\n        cutoff = float(y)\n        \n    # 2. 計算正規化頻率\n    nyq = 0.5 * fs\n    normal_cutoff = np.clip(cutoff / nyq, 0.001, 0.999)\n    \n    # 3. 執行濾波 (Low Pass)\n    b, a = signal.butter(order, normal_cutoff, btype='low', analog=False)\n    return signal.filtfilt(b, a, x)",
+        "negatives": [
+            "high pass",
+            "band pass",
+            "sharpen"
+        ]
+        },
+        {
+            "2": "sig_filter_",
+            "function_id": "sig_filter_3",
+            "status": "verified",
+            "keywords": [
+                "high pass",
+                "filter",
+                "dc removal",
+                "trend",
+                "高通",
+                "去直流",
+                "趨勢消除"
+            ],
+            "description": [
+                "Filters out signals below a specific cutoff frequency.",
+                "Useful for removing DC offset or slow-moving trends.",
+                "濾除低於截止頻率的訊號，保留高頻成分。",
+                "常用於去除直流偏移或基線漂移。"
+            ],
+            "code": "import numpy as np\nimport scipy.signal as signal\n\ndef logic(x, y):\n    # 1. 參數解析\n    fs = 1000.0\n    cutoff = 10.0\n    order = 4\n    \n    if isinstance(y, dict):\n        fs = y.get('fs', fs)\n        cutoff = y.get('cutoff', cutoff)\n        order = y.get('order', order)\n    elif isinstance(y, (int, float)):\n        cutoff = float(y)\n        \n    # 2. 計算正規化頻率\n    nyq = 0.5 * fs\n    normal_cutoff = np.clip(cutoff / nyq, 0.001, 0.999)\n    \n    # 3. 執行濾波 (High Pass)\n    b, a = signal.butter(order, normal_cutoff, btype='high', analog=False)\n    return signal.filtfilt(b, a, x)",
+            "negatives": [
+                "low pass",
+                "smoothing",
+                "blur"
+            ]
+        },
+        {
+            "2": "sig_filter_",
+            "function_id": "sig_filter_4",
+            "status": "verified",
+            "keywords": [
+                "band pass",
+                "filter",
+                "frequency range",
+                "extract",
+                "帶通",
+                "頻段選取"
+            ],
+            "description": [
+                "Preserves signals within a specific frequency range [low, high].",
+                "Requires start and end frequencies.",
+                "只保留特定頻段內的訊號，濾除過低與過高的頻率。",
+                "參數 y 需包含頻率範圍 [low, high] 或字典。"
+            ],
+            "code": "import numpy as np\nimport scipy.signal as signal\n\ndef logic(x, y):\n    # 1. 參數解析\n    fs = 1000.0\n    order = 4\n    low, high = 10.0, 100.0\n    \n    if isinstance(y, dict):\n        fs = y.get('fs', fs)\n        order = y.get('order', order)\n        if 'cutoff' in y: low, high = y['cutoff']\n        elif 'low' in y and 'high' in y: low, high = y['low'], y['high']\n    elif isinstance(y, (list, tuple)) and len(y) >= 2:\n        low, high = y[0], y[1]\n        \n    # 2. 防呆與正規化\n    nyq = 0.5 * fs\n    low_n = np.clip(low / nyq, 0.001, 0.999)\n    high_n = np.clip(high / nyq, 0.001, 0.999)\n    if low_n >= high_n: low_n, high_n = high_n * 0.9, high_n\n    \n    # 3. 執行濾波 (Band Pass)\n    b, a = signal.butter(order, [low_n, high_n], btype='band', analog=False)\n    return signal.filtfilt(b, a, x)",
+            "negatives": [
+                "band stop",
+                "notch",
+                "all pass"
+            ]
+        },
+        {
+            "2": "sig_filter_",
+            "function_id": "sig_filter_5",
+            "status": "verified",
+            "keywords": [
+                "band stop",
+                "notch",
+                "filter",
+                "noise removal",
+                "帶阻",
+                "陷波",
+                "去頻"
+            ],
+            "description": [
+                "Attenuates signals within a specific frequency range (Notch Filter).",
+                "Useful for removing specific noise like power line interference (60Hz).",
+                "濾除特定頻段內的訊號 (如去除電源雜訊)。",
+                "參數結構與帶通濾波器相同。"
+            ],
+            "code": "import numpy as np\nimport scipy.signal as signal\n\ndef logic(x, y):\n    # 1. 參數解析\n    fs = 1000.0\n    order = 4\n    low, high = 55.0, 65.0\n    \n    if isinstance(y, dict):\n        fs = y.get('fs', fs)\n        order = y.get('order', order)\n        if 'cutoff' in y: low, high = y['cutoff']\n        elif 'low' in y and 'high' in y: low, high = y['low'], y['high']\n    elif isinstance(y, (list, tuple)) and len(y) >= 2:\n        low, high = y[0], y[1]\n        \n    # 2. 防呆與正規化\n    nyq = 0.5 * fs\n    low_n = np.clip(low / nyq, 0.001, 0.999)\n    high_n = np.clip(high / nyq, 0.001, 0.999)\n    if low_n >= high_n: low_n, high_n = high_n * 0.9, high_n\n    \n    # 3. 執行濾波 (Band Stop)\n    b, a = signal.butter(order, [low_n, high_n], btype='bandstop', analog=False)\n    return signal.filtfilt(b, a, x)",
+            "negatives": [
+                "band pass",
+                "extract"
+            ]
+        },
+        {
+            "3": "stat_dist_",
+            "function_id": "stat_dist_2",
+            "status": "verified",
+            "keywords": [
+            "normal distribution",
+            "gaussian",
+            "bell curve",
+            "pdf",
+            "常態分布",
+            "高斯",
+            "機率密度"
+            ],
+            "description": [
+            "Calculates the Probability Density Function (PDF) of a Normal (Gaussian) distribution.",
+            "Input x is the domain array.",
+            "計算常態分布的機率密度函數 (PDF)。",
+            "參數 y 可為標準差數值，或字典 {'mean': 平均值, 'std': 標準差}。"
+            ],
+            "code": "import numpy as np\nimport scipy.stats as stats\n\ndef logic(x, y):\n    # 1. 參數解析\n    loc = 0.0  # 平均值 (Mean)\n    scale = 1.0 # 標準差 (Std)\n    \n    if isinstance(y, dict):\n        loc = y.get('mean', loc)\n        scale = y.get('std', scale)\n    elif isinstance(y, (int, float)):\n        scale = float(y)\n        \n    # 2. 計算 PDF\n    # x 為橫軸座標\n    return stats.norm.pdf(x, loc=loc, scale=scale)",
+            "negatives": [
+            "uniform",
+            "random sample"
+            ]
+        },
+        {
+            "3": "stat_dist_",
+            "function_id": "stat_dist_3",
+            "status": "verified",
+            "keywords": [
+            "uniform distribution",
+            "flat",
+            "rectangular",
+            "pdf",
+            "均勻分布",
+            "平坦分布"
+            ],
+            "description": [
+            "Calculates the PDF of a Uniform distribution over range [low, high].",
+            "Returns 1/(high-low) inside the range and 0 outside.",
+            "計算均勻分布的機率密度函數。",
+            "參數 y 可為範圍寬度，或字典 {'low': 下界, 'high': 上界}。"
+            ],
+            "code": "import numpy as np\nimport scipy.stats as stats\n\ndef logic(x, y):\n    # 1. 參數解析\n    low = 0.0\n    high = 1.0\n    \n    if isinstance(y, dict):\n        low = y.get('low', low)\n        high = y.get('high', high)\n    elif isinstance(y, (list, tuple)) and len(y) >= 2:\n        low, high = y[0], y[1]\n        \n    scale = high - low\n    if scale <= 0: scale = 1.0 # 防呆\n        \n    # 2. 計算 PDF (scipy 的 uniform loc 是起點, scale 是寬度)\n    return stats.uniform.pdf(x, loc=low, scale=scale)",
+            "negatives": [
+            "normal",
+            "gaussian"
+            ]
+        },
+        {
+            "5": "gen_noise_",
+            "function_id": "gen_noise_3",
+            "status": "verified",
+            "keywords": [
+            "white noise",
+            "gaussian noise",
+            "random",
+            "add noise",
+            "白雜訊",
+            "高斯雜訊",
+            "加噪"
+            ],
+            "description": [
+            "Adds Gaussian White Noise to the input signal x.",
+            "Simulates thermal noise or background static.",
+            "對輸入訊號 x 疊加高斯白雜訊。",
+            "參數 y 為雜訊強度 (標準差)，或字典 {'std': 強度, 'mean': 偏移}。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    # 1. 參數解析\n    std = 0.1\n    mean = 0.0\n    \n    if isinstance(y, dict):\n        std = y.get('std', std)\n        mean = y.get('mean', mean)\n    elif isinstance(y, (int, float)):\n        std = float(y)\n        \n    # 2. 生成雜訊並疊加\n    noise = np.random.normal(loc=mean, scale=std, size=x.shape)\n    return x + noise",
+            "negatives": [
+            "denoise",
+            "filter"
+            ]
+        },
+        {
+            "5": "gen_noise_",
+            "function_id": "gen_noise_4",
+            "status": "verified",
+            "keywords": [
+            "impulse noise",
+            "salt and pepper",
+            "spikes",
+            "glitch",
+            "脈衝雜訊",
+            "椒鹽雜訊",
+            "突波"
+            ],
+            "description": [
+            "Adds Impulse (Salt and Pepper) noise to the signal.",
+            "Randomly replaces values with min or max extremes.",
+            "對訊號加入脈衝雜訊 (椒鹽雜訊)，隨機將數值替換為極值。",
+            "參數 y 為雜訊比例 (probability)，或字典 {'prob': 機率, 'min': 下限, 'max': 上限}。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    # 1. 參數解析\n    prob = 0.05 # 預設 5% 壞點\n    val_min = np.min(x)\n    val_max = np.max(x)\n    \n    if isinstance(y, dict):\n        prob = y.get('prob', prob)\n        val_min = y.get('min', val_min)\n        val_max = y.get('max', val_max)\n    elif isinstance(y, (int, float)):\n        prob = float(y)\n        \n    # 2. 複製訊號以免修改原始資料\n    out = np.copy(x)\n    \n    # 3. 生成遮罩\n    mask = np.random.random(x.shape)\n    \n    # 椒 (Pepper) -> min\n    out[mask < (prob / 2)] = val_min\n    # 鹽 (Salt) -> max\n    out[mask > (1 - prob / 2)] = val_max\n    \n    return out",
+            "negatives": [
+            "smooth",
+            "interpolate"
+            ]
+        },
+        {
+            "5": "gen_noise_",
+            "function_id": "gen_noise_5",
+            "status": "verified",
+            "keywords": [
+            "poisson noise",
+            "shot noise",
+            "photon noise",
+            "counting",
+            "泊松雜訊",
+            "散粒雜訊"
+            ],
+            "description": [
+            "Adds Poisson (Shot) noise to the signal.",
+            "Signal dependent noise, common in optical/photon counting systems.",
+            "模擬泊松雜訊 (散粒雜訊)，雜訊強度與訊號強度相關。",
+            "參數 y 為縮放因子 (scale)，數值越大雜訊越小。"
+            ],
+            "code": "import numpy as np\n\ndef logic(x, y):\n    # 1. 參數解析\n    scale = 1.0\n    if isinstance(y, dict):\n        scale = y.get('scale', scale)\n    elif isinstance(y, (int, float)):\n        scale = float(y)\n        \n    # 2. 處理負值 (Poisson 僅定義在非負整數)\n    # 先將訊號平移到正數區間，加上雜訊後再移回來\n    offset = 0\n    if np.min(x) < 0:\n        offset = -np.min(x)\n        \n    x_shifted = x + offset\n    \n    # 3. 模擬 Poisson\n    # 原理: noisy = poisson(clean * scale) / scale\n    noisy = np.random.poisson(x_shifted * scale) / scale\n    \n    return noisy - offset",
+            "negatives": [
+            "additive noise",
+            "white noise"
+            ]
+        }
+    ]
+}

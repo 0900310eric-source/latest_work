@@ -1,0 +1,61 @@
+{
+    "project_name": "Your_project",
+    "settings": {
+        "output_dir": "figures_v2",
+        "input_dir": "input_v2",
+        "raw_dir": "raw_v2",
+        "file_extension": ".csv",
+        "x_axis_column": "Timestamp",
+        "y_axis_column": "Bitrate",
+        "file_format": "pdf",
+        "figure_specs": {
+            "width": 10,
+            "height": 5.625,
+            "dpi": 300,
+            "grid": true,
+            "font_size": 12,
+            "line_width": 2.0,
+            "legend_loc": "upper right",
+            "legend_anchor": [
+                1.0,
+                1.0
+            ],
+            "legend_nloc": 2
+        }
+    },
+    "mapping_mask": {
+        "group": 0,
+        "label": 0,
+        "level": 0
+    },
+    "mask_definition": {
+        "structure": [
+            "group",
+            "label",
+            "level"
+        ],
+        "delimiter": "_"
+    },
+    "mapping_filter": {
+        "group": "",
+        "label": "",
+        "level": ""
+    },
+    "mapping": {
+        "group": {
+            "Group1": true
+        },
+        "label": {
+            "VR": true,
+            "Music": true,
+            "News": true,
+            "Sports": true,
+            "Movies": true,
+            "Animation": true
+        },
+        "level": {
+            "200": true,
+            "20": true
+        }
+    }
+}

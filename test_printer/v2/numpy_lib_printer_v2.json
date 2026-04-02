@@ -1,0 +1,134 @@
+{
+    "system_config": {
+        "target_function_name": "logic",
+        "required_libraries": [
+            "numpy"
+        ],
+        "clean_keywords": [
+            "```python",
+            "```",
+            "import numpy as np"
+        ]
+    },
+    "rag_library": [
+        {
+            "intent": "linear_calc",
+            "description": "基礎線性運算或比例計算",
+            "examples": [
+                "乘以固定倍數",
+                "乘以三倍",
+                "加上五"
+            ],
+            "code": "def logic(x, y):\n    return x * 2",
+            "bad_cases": [
+                {
+                    "wrong_description": "",
+                    "wrong_examples": [],
+                    "wrong_code": ""
+                },
+                {
+                    "wrong_description": "基礎線性運算或比例計算",
+                    "wrong_examples": [
+                        "乘以固定倍數",
+                        "乘以三倍",
+                        "加上五",
+                        "計算訊號 x 的 FFT 振幅頻譜。已知採樣頻率為 fs（由 y 傳入，若 y 為 None 則預設為 1000）。請產出雙邊頻譜轉換後的單邊振幅結果，並包含正確的頻率軸對應，確保輸出長度與輸入 x 一致。"
+                    ],
+                    "wrong_code": "def logic(x, y):\n    return x * 2"
+                },
+                {
+                    "wrong_description": "基礎線性運算或比例計算",
+                    "wrong_examples": [
+                        "乘以固定倍數",
+                        "乘以三倍",
+                        "加上五",
+                        "計算 sin(x) 的泰勒展開。參數 y 為展開階數（預設為 3）。請用 Numpy 向量化運算實現 x - x^3/6 + x^5/120，確保輸出與輸入 x 長度一致。"
+                    ],
+                    "wrong_code": "def logic(x, y):\n    return x * 2"
+                }
+            ]
+        },
+        {
+            "intent": "threshold_filter",
+            "description": "條件篩選或數值過濾",
+            "examples": [
+                "大於零的保留",
+                "負數變零",
+                "大於100的變100"
+            ],
+            "code": "def logic(x, y):\n    return np.where(x > 0, x, 0)",
+            "bad_cases": [
+                {
+                    "wrong_description": "",
+                    "wrong_examples": [],
+                    "wrong_code": ""
+                }
+            ]
+        },
+        {
+            "intent": "auto_3",
+            "description": "把大於 50 的數字都變成 50",
+            "examples": [
+                "把大於 50 的數字都變成 50"
+            ],
+            "code": "def logic(x, y):\n    return np.where(x > 50, 50, x)",
+            "bad_cases": [
+                {
+                    "wrong_description": "",
+                    "wrong_examples": [],
+                    "wrong_code": ""
+                }
+            ]
+        },
+        {
+            "intent": "auto_4",
+            "description": "計算中心差分，公式為 y[i] = x[i+1] - x[i-1]，範圍為 1 到 n-1，邊界補零，確保輸出長度不變",
+            "examples": [
+                "計算中心差分，公式為 y[i] = x[i+1] - x[i-1]，範圍為 1 到 n-1，邊界補零，確保輸出長度不變"
+            ],
+            "code": "def logic(x, y):\n    if y is None:\n        y = np.zeros_like(x)\n    y[1:-1] = x[2:] - x[:-2]\n    return y",
+            "bad_cases": [
+                {
+                    "wrong_description": "",
+                    "wrong_examples": [],
+                    "wrong_code": ""
+                }
+            ]
+        },
+        {
+            "intent": "auto_5",
+            "description": "計算中心差分，公式為 y[i] = x[i+1] - x[i-1]，範圍為 1 到 n-1，邊界補零，確保輸出長度不變",
+            "examples": [
+                "計算中心差分，公式為 y[i] = x[i+1] - x[i-1]，範圍為 1 到 n-1，邊界補零，確保輸出長度不變"
+            ],
+            "code": "def logic(x, y):\n    if y is None:\n        y = np.zeros_like(x)\n    y[1:-1] = x[2:] - x[:-2]\n    return y",
+            "bad_cases": [
+                {
+                    "wrong_description": "",
+                    "wrong_examples": [],
+                    "wrong_code": ""
+                }
+            ]
+        },
+        {
+            "intent": "auto_6",
+            "description": "計算訊號 x 的 FFT 振幅頻譜。已知採樣頻率為 fs（由 y 傳入，若 y 為 None 則預設為 1000）。請產出雙邊頻譜轉換後的單邊振幅結果，並包含正確的頻率軸對應，確保輸出長度與輸入 x 一致。",
+            "examples": [
+                "計算訊號 x 的 FFT 振幅頻譜。已知採樣頻率為 fs（由 y 傳入，若 y 為 None 則預設為 1000）。請產出雙邊頻譜轉換後的單邊振幅結果，並包含正確的頻率軸對應，確保輸出長度與輸入 x 一致。"
+            ],
+            "code": "def logic(x, y):\n    if y is None:\n        y = np.zeros_like(x)\n    fs = 1000 if y is None else y\n    n = len(x)\n    freqs = np.fft.fftfreq(n, d=1/fs)\n    fft_result = np.abs(np.fft.fft(x))\n    single_sided_fft = fft_result[:n//2+1]\n    single_sided_freqs = freqs[:n//2+1]\n    return single_sided_freqs, single_sided_fft"
+        },
+        {
+            "intent": "math_taylor_sin",
+            "description": "計算 sin(x) 的泰勒展開近似值，支持 3 階與 5 階（由參數 y 控制）。",
+            "examples": [
+            "sin 的泰勒展開",
+            "我想算出 sin 的近似，不要太複雜，大概 3 階就好",
+            "正弦波多項式逼近",
+            "用 x - x^3/6 算 sin",
+            "簡單的 sin 近似公式"
+            ],
+            "code": "def logic(x, y):\n    n = int(y) if (y is not None and np.isscalar(y)) else 3\n    res = x - (x**3 / 6.0)\n    if n >= 5:\n        res += (x**5 / 120.0)\n    return x, res"
+        }
+    ]
+}
